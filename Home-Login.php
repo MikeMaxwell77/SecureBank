@@ -104,6 +104,21 @@
         .hidden {
             display: none;
         }
+        .login-response {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
 <body>
@@ -114,7 +129,7 @@
     
     <nav>
         <ul>
-	    <li><a href="Home-Login.php" id="home-link">Home</a></li>
+            <li><a href="Home-Login.php" id="home-link">Home</a></li>
             <li><a href="transfer page.php" id="transfer-link">Transfer</a></li>
             <li><a href="#" id="about-link">About</a></li>
             <li><a href="contact page.php" id="contact-link">Contact</a></li>
@@ -125,7 +140,7 @@
         <!-- Login Form - Initially visible -->
         <div id="login-section" class="login-container">
             <h2>Login to Your Account</h2>
-            <form id="login-form">
+            <form id="login-form" method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
                 <div class="form-group">
                     <label for="username">Username:</label>
                     <input type="text" id="username" name="username" required>
@@ -136,51 +151,46 @@
                 </div>
                 <button type="submit">Login</button>
             </form>
-            <p>Don't have an account? <a href="#" id="register-link">Register here</a></p>
-        </div>
-        
-        <!-- Account Overview - Initially hidden -->
-        <div id="account-section" class="hidden">
-            <h2>Welcome, <span id="user-name">User</span>!</h2>
+            <p>Don't have an account? <a href="register.php" id="register-link">Register here</a></p>
             
-            <div class="account-overview">
-                <h3>Your Accounts</h3>
-                
-                <div class="account-card">
-                    <h4>Checking Account</h4>
-                    <p>Account Number: XXXX-XXXX-1234</p>
-                    <p>Balance: $<span id="checking-balance">2,543.87</span></p>
-                </div>
-                
-                <div class="account-card">
-                    <h4>Savings Account</h4>
-                    <p>Account Number: XXXX-XXXX-5678</p>
-                    <p>Balance: $<span id="savings-balance">15,789.32</span></p>
-                </div>
-                
-                <h3>Recent Transactions</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr style="background-color: #f2f2f2;">
-                        <th style="text-align: left; padding: 8px;">Date</th>
-                        <th style="text-align: left; padding: 8px;">Description</th>
-                        <th style="text-align: right; padding: 8px;">Amount</th>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px;">2025-03-07</td>
-                        <td style="padding: 8px;">Grocery Store</td>
-                        <td style="padding: 8px; text-align: right;">-$78.45</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px;">2025-03-05</td>
-                        <td style="padding: 8px;">Salary Deposit</td>
-                        <td style="padding: 8px; text-align: right;">+$2,450.00</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px;">2025-03-02</td>
-                        <td style="padding: 8px;">Electric Bill</td>
-                        <td style="padding: 8px; text-align: right;">-$145.30</td>
-                    </tr>
-                </table>
+            <!-- Login Response Section -->
+            <div id="login-response">
+                <?php
+                if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+                    // Insecure login page - Vulnerable to SQL Injection
+                    $conn = new mysqli("localhost", "root", "", "secure_bank_website_db");
+
+                    if ($_SERVER["REQUEST_METHOD"] == "POST") {
+                        $username = $_POST['username'];
+                        $password = $_POST['password'];
+
+                        // Vulnerable SQL query - NEVER do this in production
+                        $sql = "SELECT * FROM users WHERE username = '$username' AND password_hash = '$password'";
+                        $result = $conn->query($sql);
+
+                        if ($result->num_rows > 1) {
+                            echo "Login successful!";
+                            
+                            // Fetch the user data as an associative array
+                            $user = $result->fetch_assoc();
+                            
+                            // Display user information
+                            echo "<br>Welcome, " . $user['username'] . "!";
+                            
+                            // If you want to display all user data (not recommended for security reasons)
+                            echo "<br>User details:<br>";
+                            foreach ($user as $key => $value) {
+                                echo $key . ": " . $value . "<br>";
+                            }
+                        } else {
+                            echo "Invalid credentials.";
+                        }
+                        
+                    }
+                }
+                ?>
+                    
             </div>
         </div>
     </main>
@@ -191,62 +201,31 @@
     </footer>
 
     <script>
-        // Simple functionality for demonstration purposes
-        document.getElementById('login-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            
-            // Simulate authentication - This will be where vulnerabilities can be added
-            if (username && password) {
-                document.getElementById('login-section').classList.add('hidden');
-                document.getElementById('account-section').classList.remove('hidden');
-                document.getElementById('user-name').textContent = username;
-            }
-        });
-        
         // Navigation functionality
         document.getElementById('home-link').addEventListener('click', function(e) {
-    		e.preventDefault();
-    		// Your navigation logic here
-    		// For example:
-    		window.location.href = 'Home-Login.php';
-    		// Or show an alert like your other links:
-    		// alert('Navigating to new page...');
-	});
-	document.getElementById('transfer-link').addEventListener('click', function(e) {
-    		e.preventDefault();
-    		// Your navigation logic here
-    		// For example:
-    		window.location.href = 'transfer page.php';
-    		// Or show an alert like your other links:
-    		// alert('Navigating to new page...');
-	});
+            e.preventDefault();
+            window.location.href = 'Home-Login.php';
+        });
         
+        document.getElementById('transfer-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'transfer page.php';
+        });
         
         document.getElementById('about-link').addEventListener('click', function(e) {
             e.preventDefault();
             alert('This is a demo banking website for CTF challenges.');
         });
 
-	document.getElementById('contact-link').addEventListener('click', function(e) {
-    		e.preventDefault();
-    		// Your navigation logic here
-    		// For example:
-    		window.location.href = 'contact page.php';
-    		// Or show an alert like your other links:
-    		// alert('Navigating to new page...');
-	});
+        document.getElementById('contact-link').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'contact page.php';
+        });
         
         document.getElementById('register-link').addEventListener('click', function(e) {
-    		e.preventDefault();
-    		// Your navigation logic here
-    		// For example:
-    		window.location.href = 'register.php';
-    		// Or show an alert like your other links:
-    		// alert('Navigating to new page...');
-	});
-        
+            e.preventDefault();
+            window.location.href = 'register.php';
+        });
     </script>
 </body>
 </html>

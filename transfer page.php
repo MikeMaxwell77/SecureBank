@@ -1,55 +1,5 @@
 <?php
-// Start or resume the session
-session_start();
 
-// Check if user is logged in, redirect if not
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
-    exit();
-}
-
-// Database connection
-$db_host = "localhost";
-$db_user = "db_username";
-$db_pass = "db_password";
-$db_name = "securebank";
-
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-// Get user ID from session
-$username = $_SESSION['username'];
-
-// Fetch user's accounts - only the necessary fields
-$stmt = $conn->prepare("SELECT account_number, balance FROM accounts WHERE username = ?");
-$stmt->bind_param("i", $username);
-$stmt->execute();
-$result = $stmt->get_result();
-
-// Store accounts in an array
-$accounts = [];
-while ($row = $result->fetch_assoc()) {
-    $accounts[] = $row;
-}
-
-// Close connection
-$stmt->close();
-$conn->close();
-
-// Format account number for display (show last 4 digits)
-function formatAccountNumber($accountNumber) {
-    return "XXXX-" . substr($accountNumber, -4);
-}
-
-// Format balance for display
-function formatBalance($balance) {
-    return "$" . number_format($balance, 2);
-}
-?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -208,7 +158,6 @@ function formatBalance($balance) {
             
             <div class="account-selector">
                 <label>From Account</label>
-                <?php if(count($accounts) > 0): ?>
                 <div class="account-info">
                     <span>Checking (<?php echo formatAccountNumber($accounts[0]['account_number']); ?>)</span>
                     <span class="balance">Balance: <?php echo formatBalance($accounts[0]['balance']); ?></span>
@@ -306,17 +255,6 @@ function formatBalance($balance) {
                 recipient = document.getElementById('recipient-name').value + 
                           ' (Acct: ' + document.getElementById('recipient-account').value + ')';
             }
-            
-            // Display confirmation (just a demo)
-            alert(`Transfer of $${amount} to ${recipient} initiated successfully!`);
-            
-            // Log the transfer details (for demo purposes)
-            console.log('Transfer details:', {
-                amount: amount,
-                recipient: recipient,
-                memo: document.getElementById('memo').value,
-                fromAccount: 'Checking (<?php echo isset($accounts[0]) ? formatAccountNumber($accounts[0]['account_number']) : "XXXX-1234"; ?>)'
-            });
         });
 
         document.getElementById('logout-link').addEventListener('click', function(e) {
