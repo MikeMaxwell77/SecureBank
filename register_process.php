@@ -55,13 +55,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
         
         // Prepare and bind
-        $stmt = $conn->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
+        $stmt = $conn->prepare("INSERT INTO users (username, password_hash) VALUES (?, ?)");
         $stmt->bind_param("ss", $username, $hashed_password);
         
         // Execute statement
         if ($stmt->execute()) {
             // Redirect to login page
-            header("Location: login.php?registration=success");
+            header("Location: Home-Login.php?registration=success");
             exit();
         } else {
             $errors[] = "Error: " . $stmt->error;
