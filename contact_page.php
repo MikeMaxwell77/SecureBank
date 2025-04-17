@@ -1,8 +1,11 @@
 <?php
-// Check if an XSS exploitation error was reported
-if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
-    // Set the flag cookie when an actual XSS execution error is reported
-    setcookie("SecretCookie", "11110000$Flag$", time() + 1, "/", "", true, false);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+if (isset($_GET['xss_triggered']) && $_GET['xss_triggered'] === 'true') {
+    setcookie("SecretCookie", "Myflag11110000flag", time() + 3600, "/", "", false, false);
+    echo "Cookie set!";
+    exit; // Stop further output
 }
 ?>
 <!DOCTYPE html>
@@ -71,15 +74,6 @@ if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
             display: none;
         }
     </style>
-    <!-- Global error handler to catch JavaScript errors -->
-    <script>
-        // Override the default error handler to capture JavaScript errors
-        window.onerror = function(message, source, lineno, colno, error) {
-            // Load the page with a parameter that indicates an XSS error occurred
-            window.location.href = window.location.pathname + '?xss_error=true';
-            return true; // Prevents the default browser error handling
-        };
-    </script>
 </head>
 <body>
     <header>
@@ -90,7 +84,7 @@ if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
         <h2>Contact Us</h2>
         <p>Please complete the form below and we'll get back to you as soon as possible.</p>
         
-        <form id="contactForm" method="post">
+        <form id="contactForm" onsubmit="previewMessage(event)">
             <div class="form-group">
                 <label for="name">Full Name</label>
                 <input type="text" id="name" name="name" placeholder="Your full name" required>
@@ -115,8 +109,8 @@ if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
                 <textarea id="message" name="message" rows="5" placeholder="How can we help you?" required></textarea>
             </div>
             
-            <button type="button" onclick="previewMessage(event)">Preview</button>
-            <button type="submit" name="submit">Send Message</button>
+            <button type="submit">Preview</button>
+            <button type="button" id="sendButton">Send Message</button>
         </form>
         
         <div id="messagePreview" class="message-preview">
@@ -126,7 +120,16 @@ if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
     </div>
 
     <script>
-        // Function to preview the message - intentionally vulnerable to XSS
+        let triggered = false;
+
+        window.onerror = function(message, source, lineno, colno, error) {
+            if (!triggered) {
+                triggered = true;
+                fetch(window.location.pathname + '?xss_triggered=true');
+            }
+            return true;
+        };
+
         function previewMessage(event) {
             event.preventDefault();
             
@@ -134,21 +137,14 @@ if (isset($_GET['xss_error']) && $_GET['xss_error'] === 'true') {
             const message = document.getElementById('message').value;
             const topic = document.getElementById('topic').value;
             
-            try {
-                // This line is vulnerable to XSS
-                const previewDiv = document.getElementById('previewContent');
-                previewDiv.innerHTML = `
-                    <p><strong>From:</strong> ${name}</p>
-                    <p><strong>Topic:</strong> ${topic}</p>
-                    <p><strong>Message:</strong> ${message}</p>
-                `;
-                
-                document.getElementById('messagePreview').style.display = 'block';
-            } catch (e) {
-                // If there's an error during execution, it might be due to XSS
-                // The global error handler will catch it anyway, but this is a backup
-                window.location.href = window.location.pathname + '?xss_error=true';
-            }
+            const previewDiv = document.getElementById('previewContent');
+            previewDiv.innerHTML = `
+                <p><strong>From:</strong> ${name}</p>
+                <p><strong>Topic:</strong> ${topic}</p>
+                <p><strong>Message:</strong> ${message}</p>
+            `;
+            
+            document.getElementById('messagePreview').style.display = 'block';
         }
     </script>
 </body>
